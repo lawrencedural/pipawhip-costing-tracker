@@ -47,26 +47,27 @@
   .topbar {
     background: var(--brand);
     color: white;
-    padding: 0 20px;
+    padding: 0 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 72px;
+    height: 84px;
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: 0 2px 16px rgba(139,11,46,0.25);
   }
-  .logo-img { height: 56px; width: auto; display: block;  }  .nav-tabs { display: flex; gap: 6px; }
+  .logo-img { height: 64px; width: auto; display: block; }
+  .nav-tabs { display: flex; gap: 8px; }
   .nav-tab {
-    padding: 7px 16px;
-    border-radius: 20px;
+    padding: 9px 22px;
+    border-radius: 24px;
     border: 1.5px solid rgba(255,255,255,0.25);
     background: transparent;
     color: rgba(255,255,255,0.8);
     cursor: pointer;
     font-family: 'Nunito', sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     transition: all 0.2s;
     letter-spacing: 0.3px;
@@ -75,7 +76,7 @@
   .nav-tab:hover:not(.active) { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.5); }
 
   /* MAIN */
-  .main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
 
   /* SECTIONS */
   .section { display: none; }
@@ -163,7 +164,43 @@
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--pink-bg); }
   .td-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .td-center { text-align: center; }
   .td-actions { display: flex; gap: 6px; }
+
+  /* STOCK CONTROLS */
+  .stock-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+  }
+  .stock-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border2);
+    background: var(--surface);
+    color: var(--brand);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+    padding: 0;
+  }
+  .stock-btn:hover { background: var(--brand); color: white; border-color: var(--brand); }
+  .stock-val {
+    min-width: 36px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--brand-dark);
+  }
+  .stock-val.low { color: #C47040; }
+  .stock-val.out { color: var(--red); }
 
   /* BADGES */
   .badge {
@@ -318,9 +355,9 @@
   .alert-info { background: var(--brand-lighter); color: var(--brand-dark); border: 1.5px solid var(--pink-mid); }
 
   @media (max-width: 600px) {
-    .topbar { padding: 0 12px; height: 60px; }
-    .logo-img { height: 46px; }
-    .nav-tab { padding: 5px 11px; font-size: 12px; }
+    .topbar { padding: 0 14px; height: 68px; }
+    .logo-img { height: 52px; }
+    .nav-tab { padding: 7px 13px; font-size: 13px; }
     .form-grid { grid-template-columns: 1fr; }
     .form-group.span2 { grid-column: span 1; }
     .stats-row { grid-template-columns: 1fr 1fr; }
@@ -424,13 +461,14 @@
   <div class="section" id="sec-inventory">
     <div class="page-header">
       <div class="page-title">Ingredient Inventory</div>
-      <div class="page-sub">Manage your ingredients, prices, and suppliers</div>
+      <div class="page-sub">Manage your ingredients, prices, stock levels, and suppliers</div>
     </div>
 
     <div class="stats-row">
       <div class="stat-card pink"><div class="stat-label">Total Ingredients</div><div class="stat-value" id="inv-count">0</div></div>
       <div class="stat-card green"><div class="stat-label">Vendors</div><div class="stat-value" id="inv-vendors">0</div></div>
       <div class="stat-card gold"><div class="stat-label">Avg Unit Price</div><div class="stat-value" id="inv-avg">₱0</div></div>
+      <div class="stat-card" style="border-left:3px solid var(--red)"><div class="stat-label">Low / Out of Stock</div><div class="stat-value" id="inv-low">0</div></div>
     </div>
 
     <div class="search-bar">
@@ -449,6 +487,7 @@
               <th class="td-num">Price (₱)</th>
               <th class="td-num">Pkg Size</th>
               <th>UOM</th>
+              <th class="td-center">Stock (qty)</th>
               <th></th>
             </tr>
           </thead>
@@ -488,12 +527,16 @@
           <label>Package Size</label>
           <input type="number" id="inv-pkgsize" min="0" step="0.01" placeholder="e.g. 250">
         </div>
-        <div class="form-group span2">
+        <div class="form-group">
           <label>Unit of Measure (UOM)</label>
           <select id="inv-uom">
             <option>GRAMS</option><option>ML</option><option>PCS</option><option>KG</option>
             <option>L</option><option>CAN</option><option>PACK</option><option>PC</option><option>BUNCH</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Current Stock (qty)</label>
+          <input type="number" id="inv-stock" min="0" step="1" placeholder="0" value="0">
         </div>
       </div>
     </div>
@@ -605,22 +648,22 @@ let state = { inventory:[], products:[], editInvIdx:null, currentProductId:null 
 
 function seedData() {
   state.inventory = [
-    {id:uid(),name:'All Purpose Cream (Nestlé)',brand:'Nestlé',vendor:'South Supermarket',price:72,pkgSize:250,uom:'ML'},
-    {id:uid(),name:'Condensed Milk (Alaska)',brand:'Alaska',vendor:'South Supermarket',price:70.50,pkgSize:387,uom:'GRAMS'},
-    {id:uid(),name:'Biscoff Cookies (Lotus)',brand:'Lotus',vendor:'South Supermarket',price:200,pkgSize:34,uom:'PCS'},
-    {id:uid(),name:'Graham Crackers (M.Y. San)',brand:'M.Y. San',vendor:'South Supermarket',price:79,pkgSize:210,uom:'GRAMS'},
-    {id:uid(),name:'Crushed Grahams (M.Y. San)',brand:'M.Y. San',vendor:'South Supermarket',price:63,pkgSize:200,uom:'GRAMS'},
-    {id:uid(),name:'Banana (Cavendish)',brand:'Cavendish',vendor:'Palengke',price:140,pkgSize:1,uom:'KG'},
-    {id:uid(),name:'Mango Puree (Orchard Squeeze)',brand:'Orchard Squeeze',vendor:'AAB',price:70.50,pkgSize:200,uom:'ML'},
-    {id:uid(),name:'Mango Fruit',brand:'',vendor:'Palengke',price:50,pkgSize:1,uom:'PC'},
-    {id:uid(),name:'Food-Grade Container Plastic',brand:'RSY Packaging',vendor:'Lazada',price:268,pkgSize:50,uom:'PCS'},
-    {id:uid(),name:'Choco Chip',brand:'AAB',vendor:'AAB',price:147,pkgSize:500,uom:'GRAMS'},
-    {id:uid(),name:'White Choco Chip',brand:'AAB',vendor:'AAB',price:135,pkgSize:500,uom:'GRAMS'},
-    {id:uid(),name:'Kataifi',brand:'Backerei',vendor:'Wonderbake',price:990,pkgSize:1,uom:'KG'},
-    {id:uid(),name:'Unsalted Butter',brand:'Arla',vendor:'AAB',price:215,pkgSize:200,uom:'GRAMS'},
-    {id:uid(),name:'Pistachio Nuts',brand:'AAB',vendor:'AAB',price:720,pkgSize:250,uom:'GRAMS'},
-    {id:uid(),name:'Goya Cocoa Powder',brand:'Goya',vendor:'SM Supermarket',price:359.50,pkgSize:350,uom:'GRAMS'},
-    {id:uid(),name:'Baking Soda',brand:'Ferna',vendor:'SM Supermarket',price:42.50,pkgSize:250,uom:'GRAMS'},
+    {id:uid(),name:'All Purpose Cream (Nestlé)',brand:'Nestlé',vendor:'South Supermarket',price:72,pkgSize:250,uom:'ML',stock:4},
+    {id:uid(),name:'Condensed Milk (Alaska)',brand:'Alaska',vendor:'South Supermarket',price:70.50,pkgSize:387,uom:'GRAMS',stock:3},
+    {id:uid(),name:'Biscoff Cookies (Lotus)',brand:'Lotus',vendor:'South Supermarket',price:200,pkgSize:34,uom:'PCS',stock:2},
+    {id:uid(),name:'Graham Crackers (M.Y. San)',brand:'M.Y. San',vendor:'South Supermarket',price:79,pkgSize:210,uom:'GRAMS',stock:5},
+    {id:uid(),name:'Crushed Grahams (M.Y. San)',brand:'M.Y. San',vendor:'South Supermarket',price:63,pkgSize:200,uom:'GRAMS',stock:3},
+    {id:uid(),name:'Banana (Cavendish)',brand:'Cavendish',vendor:'Palengke',price:140,pkgSize:1,uom:'KG',stock:0},
+    {id:uid(),name:'Mango Puree (Orchard Squeeze)',brand:'Orchard Squeeze',vendor:'AAB',price:70.50,pkgSize:200,uom:'ML',stock:2},
+    {id:uid(),name:'Mango Fruit',brand:'',vendor:'Palengke',price:50,pkgSize:1,uom:'PC',stock:0},
+    {id:uid(),name:'Food-Grade Container Plastic',brand:'RSY Packaging',vendor:'Lazada',price:268,pkgSize:50,uom:'PCS',stock:50},
+    {id:uid(),name:'Choco Chip',brand:'AAB',vendor:'AAB',price:147,pkgSize:500,uom:'GRAMS',stock:1},
+    {id:uid(),name:'White Choco Chip',brand:'AAB',vendor:'AAB',price:135,pkgSize:500,uom:'GRAMS',stock:1},
+    {id:uid(),name:'Kataifi',brand:'Backerei',vendor:'Wonderbake',price:990,pkgSize:1,uom:'KG',stock:0},
+    {id:uid(),name:'Unsalted Butter',brand:'Arla',vendor:'AAB',price:215,pkgSize:200,uom:'GRAMS',stock:2},
+    {id:uid(),name:'Pistachio Nuts',brand:'AAB',vendor:'AAB',price:720,pkgSize:250,uom:'GRAMS',stock:1},
+    {id:uid(),name:'Goya Cocoa Powder',brand:'Goya',vendor:'SM Supermarket',price:359.50,pkgSize:350,uom:'GRAMS',stock:1},
+    {id:uid(),name:'Baking Soda',brand:'Ferna',vendor:'SM Supermarket',price:42.50,pkgSize:250,uom:'GRAMS',stock:3},
   ];
   state.products = [
     {id:uid(),name:'Banana Biscoff Grahams',size:'500ml tubs',emoji:'🍌',batchSize:10,sellingPrice:130,otherCosts:5,ingredients:[
@@ -649,6 +692,14 @@ function php(n) { return '₱'+parseFloat(n||0).toFixed(2); }
 function ingrBatchCost(ingr) { return (ingr.unitPrice/ingr.pkgSize)*ingr.qty; }
 function ingrCostPerTub(ingr,batch) { return ingrBatchCost(ingr)/batch; }
 
+function updateStock(idx, delta) {
+  const item = state.inventory[idx];
+  if (!item) return;
+  item.stock = Math.max(0, (item.stock || 0) + delta);
+  save();
+  renderInventory();
+}
+
 function showSection(name) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -663,25 +714,46 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 function renderInventory() {
   const q=(document.getElementById('invSearch').value||'').toLowerCase();
-  const rows=state.inventory.filter(i=>!q||i.name.toLowerCase().includes(q)||i.vendor.toLowerCase().includes(q)||i.brand.toLowerCase().includes(q));
+  const rows=state.inventory.filter(i=>!q||i.name.toLowerCase().includes(q)||i.vendor.toLowerCase().includes(q)||(i.brand||'').toLowerCase().includes(q));
   const vendors=new Set(state.inventory.map(i=>i.vendor));
   const avg=state.inventory.length?state.inventory.reduce((s,i)=>s+i.price,0)/state.inventory.length:0;
+  const lowCount=state.inventory.filter(i=>(i.stock||0)<=1).length;
+
   document.getElementById('inv-count').textContent=state.inventory.length;
   document.getElementById('inv-vendors').textContent=vendors.size;
   document.getElementById('inv-avg').textContent=php(avg);
-  document.getElementById('inventoryTbody').innerHTML=rows.map(item=>`
-    <tr>
+  document.getElementById('inv-low').textContent=lowCount;
+
+  document.getElementById('inventoryTbody').innerHTML=rows.map(item=>{
+    const idx=state.inventory.indexOf(item);
+    const stock=item.stock||0;
+    const stockClass=stock===0?'out':stock<=1?'low':'';
+    const stockBadge=stock===0
+      ? '<span class="badge badge-red" style="font-size:10px">Out</span>'
+      : stock<=1
+        ? '<span class="badge badge-gold" style="font-size:10px">Low</span>'
+        : '';
+    return `<tr>
       <td><strong>${item.name}</strong></td>
       <td style="color:var(--text2)">${item.brand||'—'}</td>
       <td style="color:var(--text2)">${item.vendor||'—'}</td>
       <td class="td-num"><strong>${php(item.price)}</strong></td>
       <td class="td-num">${item.pkgSize}</td>
       <td><span class="badge badge-pink">${item.uom}</span></td>
+      <td class="td-center">
+        <div class="stock-control">
+          <button class="stock-btn" onclick="updateStock(${idx},-1)">−</button>
+          <span class="stock-val ${stockClass}">${stock}</span>
+          <button class="stock-btn" onclick="updateStock(${idx},1)">+</button>
+          ${stockBadge}
+        </div>
+      </td>
       <td><div class="td-actions">
-        <button class="btn btn-sm" onclick="editInv(${state.inventory.indexOf(item)})">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteInv(${state.inventory.indexOf(item)})">Del</button>
+        <button class="btn btn-sm" onclick="editInv(${idx})">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteInv(${idx})">Del</button>
       </div></td>
-    </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No ingredients found</td></tr>';
+    </tr>`;
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">No ingredients found</td></tr>';
 }
 
 document.getElementById('addInvBtn').onclick=function(){
@@ -689,6 +761,7 @@ document.getElementById('addInvBtn').onclick=function(){
   document.getElementById('invModalTitle').textContent='Add Ingredient';
   ['inv-name','inv-brand','inv-vendor','inv-price','inv-pkgsize'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('inv-uom').value='GRAMS';
+  document.getElementById('inv-stock').value='0';
   openModal('invModal');
 };
 
@@ -701,6 +774,7 @@ function editInv(idx) {
   document.getElementById('inv-price').value=item.price;
   document.getElementById('inv-pkgsize').value=item.pkgSize;
   document.getElementById('inv-uom').value=item.uom;
+  document.getElementById('inv-stock').value=item.stock||0;
   openModal('invModal');
 }
 
@@ -712,7 +786,8 @@ function saveInventoryItem() {
     vendor:document.getElementById('inv-vendor').value.trim(),
     price:parseFloat(document.getElementById('inv-price').value)||0,
     pkgSize:parseFloat(document.getElementById('inv-pkgsize').value)||1,
-    uom:document.getElementById('inv-uom').value
+    uom:document.getElementById('inv-uom').value,
+    stock:parseInt(document.getElementById('inv-stock').value)||0,
   };
   if(!item.name){alert('Please enter a name');return;}
   if(state.editInvIdx!==null){state.inventory[state.editInvIdx]=item;}else{state.inventory.push(item);}
